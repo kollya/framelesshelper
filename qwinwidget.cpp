@@ -520,30 +520,6 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message,
 #include <QFocusEvent>
 #include <QVBoxLayout>
 
-/*!
-    \class QWinWidget qwinwidget.h
-    \brief The QWinWidget class is a Qt widget that can be child of a
-    native Win32 widget.
-
-    The QWinWidget class is the bridge between an existing application
-    user interface developed using native Win32 APIs or toolkits like
-    MFC, and Qt based GUI elements.
-
-    Using QWinWidget as the parent of QDialogs will ensure that
-    modality, placement and stacking works properly throughout the
-    entire application. If the child widget is a top level window that
-    uses the \c WDestructiveClose flag, QWinWidget will destroy itself
-    when the child window closes down.
-
-    Applications moving to Qt can use QWinWidget to add new
-    functionality, and gradually replace the existing interface.
-*/
-
-/*!
-    Creates an instance of QWinWidget. \a hParentWnd is the handle to
-    the native Win32 parent. If a \a parent is provided the object is
-    owned by that QObject. \a f is passed on to the QWidget constructor.
-*/
 QWinWidget::QWinWidget(QWidget *widget) : QWidget() {
     m_winNativeWindow = new QWinNativeWindow(CW_USEDEFAULT, CW_USEDEFAULT,
                                              CW_USEDEFAULT, CW_USEDEFAULT);
@@ -573,9 +549,6 @@ QWinWidget::QWinWidget(QWidget *widget) : QWidget() {
     SendMessageW(hParent, WM_SIZE, 0, 0);
 }
 
-/*!
-    Destroys this object, freeing all allocated resources.
-*/
 QWinWidget::~QWinWidget() {
     setContentWidget(nullptr);
     if (m_mainLayout) {
@@ -596,18 +569,12 @@ void QWinWidget::setContentWidget(QWidget *widget) {
 
 QWidget *QWinWidget::contentWidget() const { return m_widget; }
 
-/*!
-    Returns the handle of the native Win32 parent window.
-*/
 HWND QWinWidget::parentWindow() const { return m_winNativeWindow->handle(); }
 
 void QWinWidget::setIgnoreWidgets(const QVector<QWidget *> &widgets) {
     m_ignoreWidgets = widgets;
 }
 
-/*!
-    \reimp
-*/
 void QWinWidget::childEvent(QChildEvent *event) {
     QObject *const object = event->child();
     if (object->isWidgetType()) {
@@ -622,7 +589,6 @@ void QWinWidget::childEvent(QChildEvent *event) {
     QWidget::childEvent(event);
 }
 
-/*! \internal */
 void QWinWidget::saveFocus() {
     if (!m_prevFocus) {
         m_prevFocus = GetFocus();
@@ -632,11 +598,6 @@ void QWinWidget::saveFocus() {
     }
 }
 
-/*!
-    Shows this widget. Overrides QWidget::show().
-
-    \sa showCentered()
-*/
 void QWinWidget::show() {
     ShowWindow(parentWindow(), SW_SHOW);
     saveFocus();
@@ -672,11 +633,6 @@ void QWinWidget::resize(const QSize &value) {
 
 QSize QWinWidget::size() const { return geometry().size(); }
 
-/*!
-    Sets the focus to the window that had the focus before this widget
-    was shown, or if there was no previous window, sets the focus to
-    the parent window.
-*/
 void QWinWidget::resetFocus() {
     if (m_prevFocus) {
         SetFocus(m_prevFocus);
@@ -685,8 +641,6 @@ void QWinWidget::resetFocus() {
     }
 }
 
-/*! \reimp
- */
 bool QWinWidget::nativeEvent(const QByteArray &eventType, void *message,
                              long *result) {
     if (eventType == "windows_generic_MSG") {
@@ -743,9 +697,6 @@ void QWinWidget::closeEvent(QCloseEvent *event) {
     }
 }
 
-/*!
-    \reimp
-*/
 bool QWinWidget::eventFilter(QObject *object, QEvent *event) {
     const auto widget = qobject_cast<QWidget *>(object);
     switch (event->type()) {
@@ -786,8 +737,6 @@ bool QWinWidget::eventFilter(QObject *object, QEvent *event) {
     return QWidget::eventFilter(object, event);
 }
 
-/*! \reimp
- */
 void QWinWidget::focusInEvent(QFocusEvent *event) {
     QWidget *candidate = this;
     switch (event->reason()) {
@@ -817,8 +766,6 @@ void QWinWidget::focusInEvent(QFocusEvent *event) {
     }
 }
 
-/*! \reimp
- */
 bool QWinWidget::focusNextPrevChild(bool next) {
     QWidget *curFocus = focusWidget();
     if (!next) {
