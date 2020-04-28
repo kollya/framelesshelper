@@ -204,9 +204,15 @@ void QWinNativeWindow::setGeometry(const QRect &geometry) {
 void QWinNativeWindow::setGeometry(const int x, const int y, const int width,
                                    const int height) {
     const qreal dpr = GetDevicePixelRatioForWindow(m_hWnd);
+#if 0
     MoveWindow(m_hWnd, x - GetFrameSizeForWindow(m_hWnd).left - 1, y - 1,
                qRound(static_cast<qreal>(width) * dpr),
                qRound(static_cast<qreal>(height) * dpr) + 1, TRUE);
+#else
+    SetWindowPos(m_hWnd, nullptr, x, y, qRound(static_cast<qreal>(width) * dpr),
+                 qRound(static_cast<qreal>(height) * dpr) + 1,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
+#endif
 }
 
 QRect QWinNativeWindow::geometry() const {
@@ -420,9 +426,9 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message,
             const qreal dpr = widget->devicePixelRatioF();
             // The one pixel height top frame border is drawn in the client area
             // by ourself, don't cover it.
-            widget->setGeometry(0, 1,
-                                qRound(static_cast<qreal>(rect.right) / dpr),
-                                qRound(static_cast<qreal>(rect.bottom) / dpr));
+            widget->setGeometry(
+                0, 1, qRound(static_cast<qreal>(rect.right) / dpr),
+                qRound(static_cast<qreal>(rect.bottom) / dpr) - 1);
         }
     } break;
     case WM_GETMINMAXINFO: {
