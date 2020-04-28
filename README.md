@@ -26,9 +26,9 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-Note
+### Important Notes
 
-For now, the content widget must be a pointer, the QWinWidget must not be a pointer, otherwise the application will report an error when closing. Still invesgating.
+For now, the content widget must be a pointer, the QWinWidget must not be a pointer, otherwise the application will report an error when closing. Still investigating. Sorry for the inconvenience.
 
 ## Supported Platforms
 
