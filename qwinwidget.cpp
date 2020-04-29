@@ -107,28 +107,14 @@ RECT GetFrameSizeForWindow(HWND handle, BOOL includingTitleBar = FALSE) {
     return frame;
 }
 
-VOID UpdateFrameMarginsForWindow(HWND handle) {
-    MARGINS margins = {0, 0, 0, 0};
+int GetTopBorderHeight(HWND handle) {
     if (handle && IsWindow(handle)) {
-        // We removed the whole top part of the frame (see handling of
-        // WM_NCCALCSIZE) so the top border is missing now. We add it back here.
-        // Note #1: You might wonder why we don't remove just the title bar
-        // instead of removing the whole top part of the frame and then adding
-        // the little top border back. I tried to do this but it didn't work:
-        // DWM drew the whole title bar anyways on top of the window. It seems
-        // that DWM only wants to draw either nothing or the whole top part of
-        // the frame.
-        // Note #2: For some reason if you try to set the top margin to just
-        // the top border height (what we want to do), then there is a
-        // transparency bug when the window is inactive, so I've decided to add
-        // the whole top part of the frame instead and then we will hide
-        // everything that we don't need (that is, the whole thing but the
-        // little 1 pixel wide border at the top) in the WM_PAINT handler.
-        // This eliminates the transparency bug and it's what a lot of Win32
-        // apps that customize the title bar do so it should work fine.
-        margins.cyTopHeight = GetFrameSizeForWindow(handle, TRUE).top;
+        if (IsMaximized(handle) || IsFullScreen(handle) ||
+            !IsDwmCompositionEnabled()) {
+            return 0;
+        }
     }
-    DwmExtendFrameIntoClientArea(handle, &margins);
+    return 1;
 }
 
 VOID RefreshWindowStyle(HWND handle) {
@@ -137,6 +123,15 @@ VOID RefreshWindowStyle(HWND handle) {
                      SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOSIZE |
                          SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
     }
+}
+
+COLORREF GetCustomThemeColor() {
+    DWORD color = 0;
+    BOOL opaque = FALSE;
+    if (SUCCEEDED(DwmGetColorizationColor(&color, &opaque))) {
+        return RGB((color >> 16) % 256, (color >> 8) % 256, color % 256);
+    }
+    return RGB(0, 0, 0);
 }
 
 } // namespace
@@ -380,7 +375,7 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message,
     case WM_PAINT: {
         PAINTSTRUCT ps;
         const HDC hdc = BeginPaint(hWnd, &ps);
-        const LONG topBorderHeight = 1;
+        const LONG topBorderHeight = GetTopBorderHeight(hWnd);
         if (ps.rcPaint.top < topBorderHeight) {
             RECT rcTopBorder = ps.rcPaint;
             rcTopBorder.bottom = topBorderHeight;
@@ -414,10 +409,17 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message,
         EndPaint(hWnd, &ps);
         return 0;
     } break;
-    case WM_ACTIVATE:
-    case WM_DWMCOMPOSITIONCHANGED:
-        UpdateFrameMarginsForWindow(hWnd);
-        break;
+    case WM_ACTIVATE: {
+        MARGINS margins = {0, 0, 0, 0};
+        if ((LOWORD(wParam) == WA_INACTIVE) && IsDwmCompositionEnabled()) {
+            margins.cyTopHeight = GetFrameSizeForWindow(hWnd, TRUE).top;
+        }
+        DwmExtendFrameIntoClientArea(hWnd, &margins);
+    } break;
+    case WM_DWMCOMPOSITIONCHANGED: {
+        const MARGINS margins = {0, 0, 0, 0};
+        DwmExtendFrameIntoClientArea(hWnd, &margins);
+    } break;
     case WM_SIZE: {
         QWidget *const widget = window->contentWidget();
         if (widget) {
@@ -439,18 +441,22 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message,
             if (!window->getMaximumSize().isEmpty()) {
                 mmi.ptMaxSize.x = qRound(
                     static_cast<qreal>(window->getMaximumSize().width()) * dpr);
-                mmi.ptMaxSize.y = qRound(
-                    static_cast<qreal>(window->getMaximumSize().height()) *
-                    dpr);
+                mmi.ptMaxSize.y =
+                    qRound(
+                        static_cast<qreal>(window->getMaximumSize().height()) *
+                        dpr) +
+                    1;
                 mmi.ptMaxTrackSize.x = mmi.ptMaxSize.x;
                 mmi.ptMaxTrackSize.y = mmi.ptMaxSize.y;
             }
             if (!window->getMinimumSize().isEmpty()) {
                 mmi.ptMinTrackSize.x = qRound(
                     static_cast<qreal>(window->getMinimumSize().width()) * dpr);
-                mmi.ptMinTrackSize.y = qRound(
-                    static_cast<qreal>(window->getMinimumSize().height()) *
-                    dpr);
+                mmi.ptMinTrackSize.y =
+                    qRound(
+                        static_cast<qreal>(window->getMinimumSize().height()) *
+                        dpr) +
+                    1;
             }
             return 0;
         }
@@ -581,6 +587,22 @@ void QWinWidget::setIgnoreWidgets(const QVector<QWidget *> &widgets) {
     m_ignoreWidgets = widgets;
 }
 
+void QWinWidget::setMinimumSize(const int width, const int height) {
+    m_winNativeWindow->setMinimumSize(width, height);
+}
+
+void QWinWidget::setMinimumSize(const QSize &value) {
+    m_winNativeWindow->setMinimumSize(value);
+}
+
+void QWinWidget::setMaximumSize(const int width, const int height) {
+    m_winNativeWindow->setMaximumSize(width, height);
+}
+
+void QWinWidget::setMaximumSize(const QSize &value) {
+    m_winNativeWindow->setMaximumSize(value);
+}
+
 void QWinWidget::childEvent(QChildEvent *event) {
     QObject *const object = event->child();
     if (object->isWidgetType()) {
@@ -620,6 +642,10 @@ void QWinWidget::setGeometry(const QRect &value) {
 }
 
 QRect QWinWidget::geometry() const { return m_winNativeWindow->geometry(); }
+
+QRect QWinWidget::frameGeometry() const {
+    return m_winNativeWindow->frameGeometry();
+}
 
 void QWinWidget::move(const int x, const int y) {
     const QRect rect = geometry();

@@ -122,6 +122,7 @@ public:
     QWidget *contentWidget() const;
 
     QRect geometry() const;
+    QRect frameGeometry() const;
 
     QSize size() const;
 
