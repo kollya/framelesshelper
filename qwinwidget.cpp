@@ -26,7 +26,11 @@
 
 #include <dwmapi.h>
 #include <shellapi.h>
+#include <uxtheme.h>
 #include <windowsx.h>
+
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+#define HINST_THISCOMPONENT ((HINSTANCE)&__ImageBase)
 
 namespace {
 
@@ -138,17 +142,15 @@ COLORREF GetCustomThemeColor() {
 
 QWinNativeWindow::QWinNativeWindow(const int x, const int y, const int width,
                                    const int height) {
-    const HINSTANCE hInstance = GetModuleHandleW(nullptr);
-
     WNDCLASSEXW wcex;
     SecureZeroMemory(&wcex, sizeof(wcex));
     wcex.cbSize = sizeof(wcex);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
-    wcex.hInstance = hInstance;
+    wcex.hInstance = HINST_THISCOMPONENT;
     wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     wcex.lpszClassName = szWindowClassName;
-    wcex.hCursor = LoadCursorW(hInstance, IDC_ARROW);
+    wcex.hCursor = LoadCursorW(HINST_THISCOMPONENT, IDC_ARROW);
 
     RegisterClassExW(&wcex);
 
@@ -161,7 +163,7 @@ QWinNativeWindow::QWinNativeWindow(const int x, const int y, const int width,
                                : qRound(static_cast<qreal>(width) * dpr),
         height == CW_USEDEFAULT ? height
                                 : qRound(static_cast<qreal>(height) * dpr),
-        nullptr, nullptr, hInstance, static_cast<LPVOID>(this));
+        nullptr, nullptr, HINST_THISCOMPONENT, static_cast<LPVOID>(this));
 
     Q_ASSERT(m_hWnd);
 }
@@ -368,8 +370,6 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message,
         if (my < (rcWindow.top + GetFrameSizeForWindow(hWnd, TRUE).top)) {
             return HTCAPTION;
         }
-        // ###FIXME: Why?
-        SetCursor(LoadCursorW(nullptr, IDC_ARROW));
         return HTCLIENT;
     } break;
     case WM_PAINT: {
