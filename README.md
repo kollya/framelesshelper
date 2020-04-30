@@ -38,6 +38,12 @@ Not because of using too new API, but the four frame borders in Windows 7 are to
 
 (Not tested on Windows 8/8.1 but I guess it will be no better than Windows 7)
 
+## Problems to be solved
+
+1. For a normal Win32 window, in light mode, the four window borders are semi-transparent white when it has focus, they will become semi-transparent light grayish when it loses focus.
+2. For a normal Win32 window, in dark mode, the four window borders are semi-transparent dark grayish when it has focus, they will become semi-transparent light grayish (the same with when it's in light mode) when it loses focus. **[SOLVED]**
+3. If the user choose to show the theme color on title bar and window border (only available on Windows 10), the border color will become the theme color with transparency when the window has focus, but when it loses focus, the border color is still semi-transparent light grayish. And when the user changes the theme color, the border color will also change, at the same time (notify signal: `WM_DWMCOLORIZATIONCOLORCHANGED`).
+
 ## Special Thanks
 
 Thanks **Lucas** for testing this code in many various conditions.
