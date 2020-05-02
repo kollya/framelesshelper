@@ -133,7 +133,7 @@ COLORREF GetCustomThemeColor() {
     DWORD color = 0;
     BOOL opaque = FALSE;
     if (SUCCEEDED(DwmGetColorizationColor(&color, &opaque))) {
-        return RGB((color >> 16) % 256, (color >> 8) % 256, color % 256);
+        return RGB(GetRValue(color), GetGValue(color), GetBValue(color));
     }
     return RGB(0, 0, 0);
 }
@@ -233,9 +233,11 @@ QRect QWinNativeWindow::frameGeometry() const {
 
 HWND QWinNativeWindow::handle() const { return m_hWnd; }
 
-void QWinNativeWindow::setContentWidget(QWidget *widget) { m_widget = widget; }
+void QWinNativeWindow::setContentWidget(QPointer<QWidget> widget) {
+    m_widget = widget;
+}
 
-QWidget *QWinNativeWindow::contentWidget() const { return m_widget; }
+QPointer<QWidget> QWinNativeWindow::contentWidget() const { return m_widget; }
 
 LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message,
                                            WPARAM wParam, LPARAM lParam) {
@@ -532,11 +534,11 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message,
 #include <QFocusEvent>
 #include <QVBoxLayout>
 
-QWinWidget::QWinWidget(QWidget *widget) : QWidget() {
-    m_winNativeWindow = new QWinNativeWindow(CW_USEDEFAULT, CW_USEDEFAULT,
-                                             CW_USEDEFAULT, CW_USEDEFAULT);
+QWinWidget::QWinWidget(QPointer<QWidget> widget) : QWidget() {
+    m_winNativeWindow.reset(new QWinNativeWindow(CW_USEDEFAULT, CW_USEDEFAULT,
+                                                 CW_USEDEFAULT, CW_USEDEFAULT));
     const HWND hParent = m_winNativeWindow->handle();
-    Q_ASSERT(hParent);
+    Q_ASSERT(!m_winNativeWindow.isNull() && hParent);
     setProperty("_q_embedded_native_parent_handle",
                 reinterpret_cast<WId>(hParent));
     const auto hWnd = reinterpret_cast<HWND>(winId());
@@ -549,10 +551,10 @@ QWinWidget::QWinWidget(QWidget *widget) : QWidget() {
     QEvent event(QEvent::EmbeddingControl);
     QApplication::sendEvent(this, &event);
     setContentsMargins(0, 0, 0, 0);
-    m_mainLayout = new QVBoxLayout();
+    m_mainLayout.reset(new QVBoxLayout());
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
-    setLayout(m_mainLayout);
+    setLayout(m_mainLayout.get());
     if (widget) {
         setContentWidget(widget);
     }
@@ -561,15 +563,9 @@ QWinWidget::QWinWidget(QWidget *widget) : QWidget() {
     SendMessageW(hParent, WM_SIZE, 0, 0);
 }
 
-QWinWidget::~QWinWidget() {
-    setContentWidget(nullptr);
-    if (m_mainLayout) {
-        delete m_mainLayout;
-        m_mainLayout = nullptr;
-    }
-}
+QWinWidget::~QWinWidget() = default;
 
-void QWinWidget::setContentWidget(QWidget *widget) {
+void QWinWidget::setContentWidget(QPointer<QWidget> widget) {
     if (m_widget) {
         m_mainLayout->removeWidget(m_widget);
     }
@@ -579,11 +575,11 @@ void QWinWidget::setContentWidget(QWidget *widget) {
     }
 }
 
-QWidget *QWinWidget::contentWidget() const { return m_widget; }
+QPointer<QWidget> QWinWidget::contentWidget() const { return m_widget; }
 
 HWND QWinWidget::parentWindow() const { return m_winNativeWindow->handle(); }
 
-void QWinWidget::setIgnoreWidgets(const QVector<QWidget *> &widgets) {
+void QWinWidget::setIgnoreWidgets(const QVector<QPointer<QWidget>> &widgets) {
     m_ignoreWidgets = widgets;
 }
 
@@ -700,7 +696,8 @@ bool QWinWidget::nativeEvent(const QByteArray &eventType, void *message,
                 bool shouldIgnore = false;
                 if (!m_ignoreWidgets.isEmpty()) {
                     for (auto &&widget : qAsConst(m_ignoreWidgets)) {
-                        if (widget->geometry().contains(
+                        if (widget &&
+                            widget->geometry().contains(
                                 mapFromGlobal(QCursor::pos()))) {
                             shouldIgnore = true;
                             break;
@@ -723,10 +720,6 @@ bool QWinWidget::nativeEvent(const QByteArray &eventType, void *message,
 void QWinWidget::closeEvent(QCloseEvent *event) {
     Q_UNUSED(event)
     SetParent(reinterpret_cast<HWND>(winId()), nullptr);
-    if (m_winNativeWindow) {
-        delete m_winNativeWindow;
-        m_winNativeWindow = nullptr;
-    }
 }
 
 bool QWinWidget::eventFilter(QObject *object, QEvent *event) {

@@ -4,6 +4,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+#include <QPointer>
 #include <QWidget>
 #include <qt_windows.h>
 
@@ -55,8 +56,8 @@ public:
 
     HWND handle() const;
 
-    void setContentWidget(QWidget *widget);
-    QWidget *contentWidget() const;
+    void setContentWidget(QPointer<QWidget> widget);
+    QPointer<QWidget> contentWidget() const;
 
 private:
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
@@ -64,7 +65,7 @@ private:
 
 private:
     QSize m_minimumSize = {0, 0}, m_maximumSize = {0, 0};
-    QWidget *m_widget = nullptr;
+    QPointer<QWidget> m_widget = nullptr;
     HWND m_hWnd = nullptr;
 };
 
@@ -108,6 +109,8 @@ private:
 **
 ****************************************************************************/
 
+#include <QScopedPointer>
+
 class QVBoxLayout;
 
 class QWinWidget : public QWidget {
@@ -115,11 +118,11 @@ class QWinWidget : public QWidget {
     Q_DISABLE_COPY_MOVE(QWinWidget)
 
 public:
-    explicit QWinWidget(QWidget *widget = nullptr);
+    explicit QWinWidget(QPointer<QWidget> widget = nullptr);
     ~QWinWidget() override;
 
-    void setContentWidget(QWidget *widget);
-    QWidget *contentWidget() const;
+    void setContentWidget(QPointer<QWidget> widget);
+    QPointer<QWidget> contentWidget() const;
 
     QRect geometry() const;
     QRect frameGeometry() const;
@@ -128,7 +131,7 @@ public:
 
     HWND parentWindow() const;
 
-    void setIgnoreWidgets(const QVector<QWidget *> &widgets);
+    void setIgnoreWidgets(const QVector<QPointer<QWidget>> &widgets);
 
     void setMinimumSize(const int width, const int height);
     void setMinimumSize(const QSize &value);
@@ -165,10 +168,10 @@ private:
     void resetFocus();
 
 private:
-    QWinNativeWindow *m_winNativeWindow = nullptr;
-    QVBoxLayout *m_mainLayout = nullptr;
-    QWidget *m_widget = nullptr;
-    QVector<QWidget *> m_ignoreWidgets;
+    QScopedPointer<QWinNativeWindow> m_winNativeWindow;
+    QScopedPointer<QVBoxLayout> m_mainLayout;
+    QPointer<QWidget> m_widget = nullptr;
+    QVector<QPointer<QWidget>> m_ignoreWidgets;
     HWND m_prevFocus = nullptr;
     bool m_reEnableParent = false;
 };
