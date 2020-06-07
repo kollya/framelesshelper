@@ -26,9 +26,15 @@ int main(int argc, char *argv[]) {
 
     QApplication application(argc, argv);
 
-    QWidget widget;
-    QWinWidget winWidget(&widget);
+    // The content widget must be a pointer.
+    QWidget *widget = new QWidget();
+    // The QWinWidget must not be a pointer.
+    QWinWidget winWidget(widget);
     winWidget.show();
 
-    return QApplication::exec();
+    const int exec = QApplication::exec();
+
+    delete widget;
+
+    return exec;
 }
