@@ -1,73 +1,3 @@
-#pragma once
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#include <QWidget>
-#include <qt_windows.h>
-
-/*
- * MIT License
- *
- * Copyright (C) 2020 by wangwenx190 (Yuhang Zhao)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
-class QWinNativeWindow {
-    Q_DISABLE_COPY_MOVE(QWinNativeWindow)
-
-public:
-    explicit QWinNativeWindow(const int x, const int y, const int width,
-                              const int height);
-    ~QWinNativeWindow();
-
-    void setMinimumSize(const QSize &size);
-    void setMinimumSize(const int width, const int height);
-    QSize getMinimumSize() const;
-
-    void setMaximumSize(const QSize &size);
-    void setMaximumSize(const int width, const int height);
-    QSize getMaximumSize() const;
-
-    void setGeometry(const QRect &geometry);
-    void setGeometry(const int x, const int y, const int width,
-                     const int height);
-    QRect geometry() const;
-    QRect frameGeometry() const;
-
-    HWND handle() const;
-
-    void setContentWidget(QWidget *widget);
-    QWidget *contentWidget() const;
-
-private:
-    static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
-                                    LPARAM lParam);
-
-private:
-    QSize m_minimumSize = {0, 0}, m_maximumSize = {0, 0};
-    QWidget *m_widget = nullptr;
-    HWND m_hWnd = nullptr;
-};
-
 /****************************************************************************
 **
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
@@ -108,9 +38,15 @@ private:
 **
 ****************************************************************************/
 
-class QVBoxLayout;
+#pragma once
 
-class QWinWidget : public QWidget {
+#include <QWidget>
+
+QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
+QT_FORWARD_DECLARE_CLASS(QWinNativeWindow)
+
+class QWinWidget : public QWidget
+{
     Q_OBJECT
     Q_DISABLE_COPY_MOVE(QWinWidget)
 
@@ -126,9 +62,9 @@ public:
 
     QSize size() const;
 
-    HWND parentWindow() const;
+    void *parentWindow() const;
 
-    void setIgnoreWidgets(const QVector<QWidget *> &widgets);
+    void setIgnoreWidgets(const QList<QWidget *> &widgets);
 
     void setMinimumSize(const int width, const int height);
     void setMinimumSize(const QSize &value);
@@ -139,8 +75,7 @@ public:
 public Q_SLOTS:
     void show();
 
-    void setGeometry(const int x, const int y, const int width,
-                     const int height);
+    void setGeometry(const int x, const int y, const int width, const int height);
     void setGeometry(const QRect &value);
 
     void move(const int x, const int y);
@@ -155,8 +90,7 @@ protected:
 
     bool focusNextPrevChild(bool next) override;
     void focusInEvent(QFocusEvent *event) override;
-    bool nativeEvent(const QByteArray &eventType, void *message,
-                     long *result) override;
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
 
     void closeEvent(QCloseEvent *event) override;
 
@@ -168,7 +102,7 @@ private:
     QWinNativeWindow *m_winNativeWindow = nullptr;
     QVBoxLayout *m_mainLayout = nullptr;
     QWidget *m_widget = nullptr;
-    QVector<QWidget *> m_ignoreWidgets;
-    HWND m_prevFocus = nullptr;
+    QList<QWidget *> m_ignoreWidgets = {};
+    void *m_prevFocus = nullptr;
     bool m_reEnableParent = false;
 };
