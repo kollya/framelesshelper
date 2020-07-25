@@ -31,13 +31,33 @@
 #include <dwmapi.h>
 #include <shellapi.h>
 #include <uxtheme.h>
-#include <windowsx.h>
 #include <QApplication>
 #include <QFocusEvent>
+#include <QOperatingSystemVersion>
 #include <QVBoxLayout>
 #include <qt_windows.h>
 
 namespace {
+
+#ifndef IsMaximized
+#define IsMaximized(h) IsZoomed(h)
+#endif
+
+#ifndef ABM_GETAUTOHIDEBAREX
+#define ABM_GETAUTOHIDEBAREX 0x0000000b
+#endif
+
+#ifndef GET_X_LPARAM
+#define GET_X_LPARAM(lp) ((int) (short) LOWORD(lp))
+#endif
+
+#ifndef GET_Y_LPARAM
+#define GET_Y_LPARAM(lp) ((int) (short) HIWORD(lp))
+#endif
+
+#ifndef GetStockBrush
+#define GetStockBrush(i) (reinterpret_cast<HBRUSH>(GetStockObject(i)))
+#endif
 
 #ifndef HINST_THISCOMPONENT
 extern "C" IMAGE_DOS_HEADER __ImageBase;
@@ -456,24 +476,51 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message, WPARAM wPara
             const UINT taskbarState = SHAppBarMessage(ABM_GETSTATE, &abd);
             // First, check if we have an auto-hide taskbar at all:
             if (taskbarState & ABS_AUTOHIDE) {
-                const HMONITOR windowMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
-                MONITORINFO monitorInfo;
-                SecureZeroMemory(&monitorInfo, sizeof(monitorInfo));
-                monitorInfo.cbSize = sizeof(monitorInfo);
-                GetMonitorInfoW(windowMonitor, &monitorInfo);
-                // This helper can be used to determine if there's a
-                // auto-hide taskbar on the given edge of the monitor
-                // we're currently on.
-                const auto hasAutohideTaskbar = [&monitorInfo](const UINT edge) -> bool {
+                bool top = false, bottom = false, left = false, right = false;
+                if (QOperatingSystemVersion::current() >= QOperatingSystemVersion::Windows8_1) {
+                    const HMONITOR windowMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+                    MONITORINFO monitorInfo;
+                    SecureZeroMemory(&monitorInfo, sizeof(monitorInfo));
+                    monitorInfo.cbSize = sizeof(monitorInfo);
+                    GetMonitorInfoW(windowMonitor, &monitorInfo);
+                    // This helper can be used to determine if there's a
+                    // auto-hide taskbar on the given edge of the monitor
+                    // we're currently on.
+                    const auto hasAutohideTaskbar = [&monitorInfo](const UINT edge) -> bool {
+                        APPBARDATA _abd;
+                        SecureZeroMemory(&_abd, sizeof(_abd));
+                        _abd.cbSize = sizeof(_abd);
+                        _abd.uEdge = edge;
+                        _abd.rc = monitorInfo.rcMonitor;
+                        const auto hTaskbar = reinterpret_cast<HWND>(
+                            SHAppBarMessage(ABM_GETAUTOHIDEBAREX, &_abd));
+                        return hTaskbar != nullptr;
+                    };
+                    top = hasAutohideTaskbar(ABE_TOP);
+                    bottom = hasAutohideTaskbar(ABE_BOTTOM);
+                    left = hasAutohideTaskbar(ABE_LEFT);
+                    right = hasAutohideTaskbar(ABE_RIGHT);
+                } else {
+                    int edge = -1;
                     APPBARDATA _abd;
                     SecureZeroMemory(&_abd, sizeof(_abd));
                     _abd.cbSize = sizeof(_abd);
-                    _abd.uEdge = edge;
-                    _abd.rc = monitorInfo.rcMonitor;
-                    const auto hTaskbar = reinterpret_cast<HWND>(
-                        SHAppBarMessage(ABM_GETAUTOHIDEBAREX, &_abd));
-                    return hTaskbar != nullptr;
-                };
+                    _abd.hWnd = FindWindowW(L"Shell_TrayWnd", nullptr);
+                    if (_abd.hWnd) {
+                        const HMONITOR windowMonitor = MonitorFromWindow(hWnd,
+                                                                         MONITOR_DEFAULTTONEAREST);
+                        const HMONITOR taskbarMonitor = MonitorFromWindow(_abd.hWnd,
+                                                                          MONITOR_DEFAULTTOPRIMARY);
+                        if (taskbarMonitor == windowMonitor) {
+                            SHAppBarMessage(ABM_GETTASKBARPOS, &_abd);
+                            edge = _abd.uEdge;
+                        }
+                    }
+                    top = edge == ABE_TOP;
+                    bottom = edge == ABE_BOTTOM;
+                    left = edge == ABE_LEFT;
+                    right = edge == ABE_RIGHT;
+                }
                 // If there's a taskbar on any side of the monitor, reduce
                 // our size a little bit on that edge.
                 // Note to future code archeologists:
@@ -484,14 +531,14 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message, WPARAM wPara
                 // fullscreen mode. This includes Edge, Firefox, Chrome,
                 // Sublime Text, PowerPoint - none seemed to support this.
                 // This does however work fine for maximized.
-                if (hasAutohideTaskbar(ABE_TOP)) {
+                if (top) {
                     // Peculiarly, when we're fullscreen,
                     clientRect->top += kAutoHideTaskbarThicknessPy;
-                } else if (hasAutohideTaskbar(ABE_BOTTOM)) {
+                } else if (bottom) {
                     clientRect->bottom -= kAutoHideTaskbarThicknessPy;
-                } else if (hasAutohideTaskbar(ABE_LEFT)) {
+                } else if (left) {
                     clientRect->left += kAutoHideTaskbarThicknessPx;
-                } else if (hasAutohideTaskbar(ABE_RIGHT)) {
+                } else if (right) {
                     clientRect->right -= kAutoHideTaskbarThicknessPx;
                 }
             }
@@ -571,12 +618,9 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message, WPARAM wPara
         EndPaint(hWnd, &ps);
         return 0;
     } break;
-#if 0
-    case WM_DWMCOMPOSITIONCHANGED: {
-        const MARGINS margins = {0, 0, 0, 0};
-        DwmExtendFrameIntoClientArea(hWnd, &margins);
-    } break;
-#endif
+    case WM_DWMCOMPOSITIONCHANGED:
+        UpdateFrameMarginsForWindow(hWnd);
+        break;
     case WM_SIZE: {
         QWidget *const widget = window->contentWidget();
         if (widget) {
@@ -624,6 +668,11 @@ LRESULT CALLBACK QWinNativeWindow::WndProc(HWND hWnd, UINT message, WPARAM wPara
                      SWP_NOZORDER | SWP_NOACTIVATE);
         RedrawWindow(hWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     } break;
+#if 0
+    case WM_ERASEBKGND:
+        return 1;
+        break;
+#endif
     case WM_CLOSE: {
         QWidget *const widget = window->contentWidget();
         if (widget) {
