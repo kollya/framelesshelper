@@ -4,31 +4,9 @@ If you are using part of or all the code from this repository in your own projec
 
 如果您正在使用此项目的部分或全部代码，这是我的荣幸，我很高兴能帮到您，但我同时也希望，您能将您项目的首页或仓库的网址告诉我（闭源或收费都没关系），我将在这个自述文件中链接到您所提供的网址，以供展示。如果您能一并提供一些软件运行时的截图，那就更好了。
 
-## Screenshots - Win32
+## Screenshots
 
-![Win32Demo 1](/screenshots/win32demo1.png)
-
-![Win32Demo 2](/screenshots/win32demo2.png)
-
-![Win32Demo 3](/screenshots/win32demo3.png)
-
-![Win32Demo 4](/screenshots/win32demo4.png)
-
-![Win32Demo 5](/screenshots/win32demo5.png)
-
-![Win32Demo 6](/screenshots/win32demo6.png)
-
-## Screenshots - Cross platform
-
-![zhihuiyanglao](/screenshots/zhihuiyanglao.png)
-
-![QQ Player](/screenshots/qqplayer.png)
-
-![Qt Widgets example](/screenshots/widgets.png)
-
-![Qt MainWindow example](/screenshots/mainwindow.png)
-
-![Qt Quick example](/screenshots/quick.png)
+![Quick_Acrylic_Win7](/screenshots/quick_acrylic_win7.png)
 
 ## Features
 
@@ -41,8 +19,7 @@ If you are using part of or all the code from this repository in your own projec
 - Support tiled and stack windows by DWM (Win32 only).
 - Won't cover the task bar when maximized (Win32 only).
 - Won't block the auto-hide task bar when maximized (Win32 only).
-- No flickers when resizing.
-- Load all native APIs at run-time, no need to link to any system libraries directly (Win32 only).
+- Support cross-platform blur effect inspired by [Microsoft's Acrylic blur](https://docs.microsoft.com/en-us/windows/uwp/design/style/acrylic).
 
 ## Usage
 
@@ -52,8 +29,10 @@ If you are using part of or all the code from this repository in your own projec
 
 int main(int argc, char *argv[]) {
     QWidget widget;
+    // Qt's internal function. Make sure it's a top level window.
+    widget.createWinId();
     // Do this before the widget is shown.
-    FramelessWindowsManager::addWindow(&widget);
+    FramelessWindowsManager::addWindow(widget.windowHandle());
     widget.show();
 }
 ```
@@ -65,29 +44,21 @@ Please refer to [the QWidget example](/examples/QWidget/main.cpp) for more detai
 ```cpp
 // Only **TOP LEVEL** QWidgets and QWindows are supported.
 QMainWindow *mainWindow = new QMainWindow;
+// Qt's internal function. Make sure it's a top level window.
+mainWindow->createWinId();
+QWindow *win = mainWindow->windowHandle();
 // Disable resizing of the given window. Resizing is enabled by default.
-FramelessWindowsManager::setResizable(mainWindow, false);
+FramelessWindowsManager::setResizable(win, false);
 // All the following values should not be DPI-aware, just use the
 // original numbers, assuming the scale factor is 1.0, don't scale
 // them yourself, this code will do the scaling according to DPI
 // internally and automatically.
 // Maximum window size
-FramelessWindowsManager::setMaximumSize(mainWindow, {1280, 720});
+win->setMaximumSize(1280, 720);
 // Minimum window size
-FramelessWindowsManager::setMinimumSize(mainWindow, {800, 540});
-// How to set ignore areas:
-// The geometry of something you already know, in window coordinates
-FramelessWindowsManager::addIgnoreArea(mainWindow, {100, 0, 30, 30});
-// The geometry of a widget, in window coordinates.
-// It won't update automatically when the geometry of that widget has
-// changed, so if you want to add a widget, which is in a layout and
-// it's geometry will possibly change, to the ignore list, try the
-// next method (addIgnoreObject) instead.
-FramelessWindowsManager::addIgnoreArea(mainWindow, pushButton_close.geometry());
+win->setMinimumSize(800, 540);
 // The **POINTER** of a QWidget or QQuickItem
-FramelessWindowsManager::addIgnoreObject(mainWindow, ui->pushButton_minimize);
-// Move a QWidget or QWindow to the center of its current desktop.
-FramelessWindowsManager::moveWindowToDesktopCenter(mainWindow);
+FramelessWindowsManager::addIgnoreObject(win, ui->pushButton_minimize);
 ```
 
 ## Supported Platforms
@@ -108,7 +79,7 @@ A not too old version of Linux and macOS, 32 bit & 64 bit.
 
 | Component | Requirement | Additional Information |
 | --- | --- | --- |
-| Qt | >= 5.6 | Only the `gui` module is required explicitly, but to make full use of this repository, you'd better install the `widgets` and `quick` modules as well |
+| Qt | >= 5.6 | Only the `core` and `gui` modules are required |
 | Compiler | >= C++11 | MSVC, MinGW, Clang-CL, Intel-CL or cross compile from Linux/macOS are all supported |
 
 ### UNIX
@@ -127,7 +98,7 @@ Please refer to <https://github.com/wangwenx190/framelesshelper/issues> for more
 ```text
 MIT License
 
-Copyright (C) 2020 by wangwenx190 (Yuhang Zhao)
+Copyright (C) 2021 by wangwenx190 (Yuhang Zhao)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

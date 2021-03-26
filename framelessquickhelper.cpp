@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (C) 2020 by wangwenx190 (Yuhang Zhao)
+ * Copyright (C) 2021 by wangwenx190 (Yuhang Zhao)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,11 +23,14 @@
  */
 
 #include "framelessquickhelper.h"
-
 #include "framelesswindowsmanager.h"
-#include <QQuickWindow>
+#include <QtQuick/qquickwindow.h>
+#include "utilities.h"
 
-FramelessQuickHelper::FramelessQuickHelper(QQuickItem *parent) : QQuickItem(parent) {}
+FramelessQuickHelper::FramelessQuickHelper(QQuickItem *parent) : QQuickItem(parent)
+{
+    startTimer(500);
+}
 
 int FramelessQuickHelper::borderWidth() const
 {
@@ -73,82 +76,72 @@ void FramelessQuickHelper::setResizable(const bool val)
     Q_EMIT resizableChanged(val);
 }
 
-bool FramelessQuickHelper::titleBarEnabled() const
+bool FramelessQuickHelper::lightThemeEnabled() const
 {
-    return FramelessWindowsManager::getTitleBarEnabled(window());
+    return Utilities::isLightThemeEnabled();
 }
 
-void FramelessQuickHelper::setTitleBarEnabled(const bool val)
+bool FramelessQuickHelper::darkThemeEnabled() const
 {
-    FramelessWindowsManager::setTitleBarEnabled(window(), val);
-    Q_EMIT titleBarEnabledChanged(val);
+    return Utilities::isDarkThemeEnabled();
 }
 
-QSize FramelessQuickHelper::minimumSize() const
+#ifdef Q_OS_WINDOWS
+bool FramelessQuickHelper::colorizationEnabled() const
 {
-    return FramelessWindowsManager::getMinimumSize(window());
+    return Utilities::isColorizationEnabled();
 }
 
-void FramelessQuickHelper::setMinimumSize(const QSize &val)
+QColor FramelessQuickHelper::colorizationColor() const
 {
-    FramelessWindowsManager::setMinimumSize(window(), val);
-    Q_EMIT minimumSizeChanged(val);
+    return Utilities::getColorizationColor();
 }
 
-QSize FramelessQuickHelper::maximumSize() const
+bool FramelessQuickHelper::highContrastModeEnabled() const
 {
-    return FramelessWindowsManager::getMaximumSize(window());
+    return Utilities::isHighContrastModeEnabled();
 }
 
-void FramelessQuickHelper::setMaximumSize(const QSize &val)
+bool FramelessQuickHelper::darkFrameEnabled() const
 {
-    FramelessWindowsManager::setMaximumSize(window(), val);
-    Q_EMIT maximumSizeChanged(val);
+    return Utilities::isDarkFrameEnabled(window());
 }
 
-void FramelessQuickHelper::removeWindowFrame(const bool center)
+bool FramelessQuickHelper::transparencyEffectEnabled() const
 {
-    FramelessWindowsManager::addWindow(window(), center);
+    return Utilities::isTransparencyEffectEnabled();
 }
+#endif
 
-QSize FramelessQuickHelper::desktopSize() const
+void FramelessQuickHelper::removeWindowFrame()
 {
-    return FramelessWindowsManager::getDesktopSize(window());
-}
-
-QRect FramelessQuickHelper::desktopAvailableGeometry() const
-{
-    return FramelessWindowsManager::getDesktopAvailableGeometry(window());
-}
-
-QSize FramelessQuickHelper::desktopAvailableSize() const
-{
-    return FramelessWindowsManager::getDesktopAvailableSize(window());
-}
-
-void FramelessQuickHelper::moveWindowToDesktopCenter(const bool realCenter)
-{
-    FramelessWindowsManager::moveWindowToDesktopCenter(window(), realCenter);
-}
-
-void FramelessQuickHelper::addIgnoreArea(const QRect &val)
-{
-    FramelessWindowsManager::addIgnoreArea(window(), val);
-}
-
-void FramelessQuickHelper::addDraggableArea(const QRect &val)
-{
-    FramelessWindowsManager::addDraggableArea(window(), val);
+    FramelessWindowsManager::addWindow(window());
 }
 
 void FramelessQuickHelper::addIgnoreObject(QQuickItem *val)
 {
     Q_ASSERT(val);
+    if (!val) {
+        return;
+    }
     FramelessWindowsManager::addIgnoreObject(window(), val);
 }
 
-void FramelessQuickHelper::addDraggableObject(QQuickItem *val)
+void FramelessQuickHelper::timerEvent(QTimerEvent *event)
 {
-    Q_ASSERT(val);
-    FramelessWindowsManager::addDraggableObject(window(), val);
+    QQuickItem::timerEvent(event);
+    Q_EMIT lightThemeEnabledChanged(lightThemeEnabled());
+    Q_EMIT darkThemeEnabledChanged(darkThemeEnabled());
+#ifdef Q_OS_WINDOWS
+    Q_EMIT colorizationEnabledChanged(colorizationEnabled());
+    Q_EMIT colorizationColorChanged(colorizationColor());
+    Q_EMIT highContrastModeEnabledChanged(highContrastModeEnabled());
+    Q_EMIT darkFrameEnabledChanged(darkFrameEnabled());
+    Q_EMIT transparencyEffectEnabledChanged(transparencyEffectEnabled());
+#endif
+}
+
+void FramelessQuickHelper::setBlurEffectEnabled(const bool enabled, const QColor &gradientColor)
+{
+    Utilities::setBlurEffectEnabled(window(), enabled, gradientColor);
 }

@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (C) 2020 by wangwenx190 (Yuhang Zhao)
+ * Copyright (C) 2021 by wangwenx190 (Yuhang Zhao)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,37 +22,4 @@
  * SOFTWARE.
  */
 
-#pragma once
-
-#include "framelesshelper_global.h"
-#include <QRect>
-
-QT_BEGIN_NAMESPACE
-QT_FORWARD_DECLARE_CLASS(QObject)
-QT_FORWARD_DECLARE_CLASS(QWindow)
-QT_END_NAMESPACE
-
-class FRAMELESSHELPER_EXPORT FramelessWindowsManager
-{
-    Q_DISABLE_COPY_MOVE(FramelessWindowsManager)
-
-public:
-    explicit FramelessWindowsManager();
-    ~FramelessWindowsManager() = default;
-
-    static void addWindow(const QWindow *window);
-
-    static void addIgnoreObject(const QWindow *window, QObject *object);
-
-    static int getBorderWidth(const QWindow *window);
-    static void setBorderWidth(const QWindow *window, const int value);
-
-    static int getBorderHeight(const QWindow *window);
-    static void setBorderHeight(const QWindow *window, const int value);
-
-    static int getTitleBarHeight(const QWindow *window);
-    static void setTitleBarHeight(const QWindow *window, const int value);
-
-    static bool getResizable(const QWindow *window);
-    static void setResizable(const QWindow *window, const bool value = true);
-};
+#include "utilities.h"

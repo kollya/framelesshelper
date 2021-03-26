@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (C) 2020 by wangwenx190 (Yuhang Zhao)
+ * Copyright (C) 2021 by wangwenx190 (Yuhang Zhao)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,17 +25,7 @@
 #pragma once
 
 #include "framelesshelper_global.h"
-#include <QQuickItem>
-
-#if (QT_VERSION < QT_VERSION_CHECK(5, 13, 0))
-#define Q_DISABLE_MOVE(Class) \
-    Class(Class &&) = delete; \
-    Class &operator=(Class &&) = delete;
-
-#define Q_DISABLE_COPY_MOVE(Class) \
-    Q_DISABLE_COPY(Class) \
-    Q_DISABLE_MOVE(Class)
-#endif
+#include <QtQuick/qquickitem.h>
 
 class FRAMELESSHELPER_EXPORT FramelessQuickHelper : public QQuickItem
 {
@@ -46,13 +36,17 @@ class FRAMELESSHELPER_EXPORT FramelessQuickHelper : public QQuickItem
 #endif
     Q_PROPERTY(int borderWidth READ borderWidth WRITE setBorderWidth NOTIFY borderWidthChanged)
     Q_PROPERTY(int borderHeight READ borderHeight WRITE setBorderHeight NOTIFY borderHeightChanged)
-    Q_PROPERTY(
-        int titleBarHeight READ titleBarHeight WRITE setTitleBarHeight NOTIFY titleBarHeightChanged)
+    Q_PROPERTY(int titleBarHeight READ titleBarHeight WRITE setTitleBarHeight NOTIFY titleBarHeightChanged)
     Q_PROPERTY(bool resizable READ resizable WRITE setResizable NOTIFY resizableChanged)
-    Q_PROPERTY(QSize minimumSize READ minimumSize WRITE setMinimumSize NOTIFY minimumSizeChanged)
-    Q_PROPERTY(QSize maximumSize READ maximumSize WRITE setMaximumSize NOTIFY maximumSizeChanged)
-    Q_PROPERTY(bool titleBarEnabled READ titleBarEnabled WRITE setTitleBarEnabled NOTIFY
-                   titleBarEnabledChanged)
+    Q_PROPERTY(bool lightThemeEnabled READ lightThemeEnabled NOTIFY lightThemeEnabledChanged)
+    Q_PROPERTY(bool darkThemeEnabled READ darkThemeEnabled NOTIFY darkThemeEnabledChanged)
+#ifdef Q_OS_WINDOWS
+    Q_PROPERTY(bool colorizationEnabled READ colorizationEnabled NOTIFY colorizationEnabledChanged)
+    Q_PROPERTY(QColor colorizationColor READ colorizationColor NOTIFY colorizationColorChanged)
+    Q_PROPERTY(bool highContrastModeEnabled READ highContrastModeEnabled NOTIFY highContrastModeEnabledChanged)
+    Q_PROPERTY(bool darkFrameEnabled READ darkFrameEnabled NOTIFY darkFrameEnabledChanged)
+    Q_PROPERTY(bool transparencyEffectEnabled READ transparencyEffectEnabled NOTIFY transparencyEffectEnabledChanged)
+#endif
 
 public:
     explicit FramelessQuickHelper(QQuickItem *parent = nullptr);
@@ -70,36 +64,37 @@ public:
     bool resizable() const;
     void setResizable(const bool val);
 
-    QSize minimumSize() const;
-    void setMinimumSize(const QSize &val);
+    bool lightThemeEnabled() const;
+    bool darkThemeEnabled() const;
 
-    QSize maximumSize() const;
-    void setMaximumSize(const QSize &val);
-
-    bool titleBarEnabled() const;
-    void setTitleBarEnabled(const bool val);
+#ifdef Q_OS_WINDOWS
+    bool colorizationEnabled() const;
+    QColor colorizationColor() const;
+    bool highContrastModeEnabled() const;
+    bool darkFrameEnabled() const;
+    bool transparencyEffectEnabled() const;
+#endif
 
 public Q_SLOTS:
-    void removeWindowFrame(const bool center = false);
-
-    void moveWindowToDesktopCenter(const bool realCenter = true);
-
-    QSize desktopSize() const;
-    QRect desktopAvailableGeometry() const;
-    QSize desktopAvailableSize() const;
-
-    void addIgnoreArea(const QRect &val);
-    void addDraggableArea(const QRect &val);
-
+    void removeWindowFrame();
     void addIgnoreObject(QQuickItem *val);
-    void addDraggableObject(QQuickItem *val);
+    void setBlurEffectEnabled(const bool enabled = true, const QColor &gradientColor = {});
+
+protected:
+    void timerEvent(QTimerEvent *event) override;
 
 Q_SIGNALS:
     void borderWidthChanged(int);
     void borderHeightChanged(int);
     void titleBarHeightChanged(int);
     void resizableChanged(bool);
-    void minimumSizeChanged(const QSize &);
-    void maximumSizeChanged(const QSize &);
-    void titleBarEnabledChanged(bool);
+    void lightThemeEnabledChanged(bool);
+    void darkThemeEnabledChanged(bool);
+#ifdef Q_OS_WINDOWS
+    void colorizationEnabledChanged(bool);
+    void colorizationColorChanged(const QColor &);
+    void highContrastModeEnabledChanged(bool);
+    void darkFrameEnabledChanged(bool);
+    void transparencyEffectEnabledChanged(bool);
+#endif
 };
